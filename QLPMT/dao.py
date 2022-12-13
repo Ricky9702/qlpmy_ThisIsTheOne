@@ -1,6 +1,6 @@
 from sqlalchemy import func, asc
 
-from QLPMT.models import User, BenhNhan, DanhSachKham, UserRole, UserLogin, PhieuKhamBenh, ChiTietPhieuKhamBenh, \
+from QLPMT.models import User, BenhNhan, DanhSachKham, UserRole, PhieuKhamBenh, ChiTietPhieuKhamBenh, \
     LoaiThuoc, Thuoc, DonVi, BacSi, HoaDon
 from QLPMT import db
 import hashlib
@@ -10,23 +10,26 @@ def online_register(HoTen, GioiTinh, NamSinh, DiaChi, DanhSachKham_id):
     b = BenhNhan(HoTen=HoTen, GioiTinh=GioiTinh, NamSinh=NamSinh, DiaChi=DiaChi, DanhSachKham_id=DanhSachKham_id)
     db.session.add(b)
     db.session.commit()
-
-
 # Phieu kham benh
-def add_medical_report(ngaykham, mabenhnhan, trieuchung, dudoanbenh, tenloaithuoc, tenthuoc, soluong, cachdung):
-    thuoc_id = get_med_id(tenthuoc, tenloaithuoc)
-    phieukham_id = (get_medical_report_last_id() + 1)
-    pk = PhieuKhamBenh(NgayKham=ngaykham, TrieuChung=trieuchung, DuDoanBenh=dudoanbenh, BacSi_id=2,
+def add_medical_report(ngaykham, mabenhnhan, trieuchung, dudoanbenh):
+
+    pk = PhieuKhamBenh(NgayKham=ngaykham, TrieuChung=trieuchung, DuDoanBenh=dudoanbenh, BacSi_id=1,
                        BenhNhan_id=mabenhnhan, HoaDon_id=1)
+    db.session.add(pk)
+    db.session.commit()
+def add_detial_medical_report(tenloaithuoc, tenthuoc, soluong, cachdung):
+    thuoc_id = get_med_id(tenthuoc, tenloaithuoc)
+    phieukham_id = (get_medical_report_last_id())
     ctpkb = ChiTietPhieuKhamBenh(SoLuong=soluong, CachDung=cachdung, PhieuKhamBenh_id=phieukham_id,
                                  Thuoc_id=thuoc_id)
-    db.session.add_all([pk, ctpkb])
+    db.session.add(ctpkb)
     db.session.commit()
 
 
 def load_med_name(med_type=None):
     if med_type:
-        return Thuoc.query.filter(Thuoc.LoaiThuoc_id == get_med_type_id(med_type))
+        return Thuoc.query.\
+            filter(Thuoc.LoaiThuoc_id == LoaiThuoc.id).filter(LoaiThuoc.TenLoaiThuoc == med_type).all()
     return Thuoc.query.all()
 
 
@@ -42,7 +45,7 @@ def load_med_info():
 
 
 def get_med_type_id(med_type):
-    return db.session.query(LoaiThuoc.id).filter(LoaiThuoc.TenLoaiThuoc.__eq__(med_type)).scalar()
+    return db.session.query(LoaiThuoc.id).filter(LoaiThuoc.TenLoaiThuoc.__eq__(med_type)).all()
 
 
 def get_med_id(med_name=None, med_type=None):
@@ -69,6 +72,9 @@ def some_test():
 
 def get_medical_report_last_id():
     return db.session.query(func.max(PhieuKhamBenh.id)).scalar()
+
+def get_payment_last_id():
+    return db.session.query(func.max(HoaDon.id)).scalar()
 
 
 def update_med_amount(med_name, amount):
@@ -105,12 +111,12 @@ def load_BenhNhan():
 
 def auth_user(username, password):
     password = str(hashlib.md5(password.strip().encode('utf-8')).hexdigest())
-    return UserLogin.query.filter(UserLogin.username.__eq__(username.strip()),
-                                  UserLogin.password.__eq__(password)).first()
+    return User.query.filter(User.username.__eq__(username.strip()),
+                                  User.password.__eq__(password)).first()
 
 
 def get_user_by_id(user_id):
-    return UserLogin.query.get(user_id)
+    return User.query.get(user_id)
 
 
 def get_phieukhambenn(id):

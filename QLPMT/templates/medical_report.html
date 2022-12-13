@@ -55,7 +55,7 @@
 
                          <input type="button" onclick="addMedToReport(patient_info)" value="Lưu" class="btn btn-outline-primary"/>
                          <input type="button" onclick="showPatientMedicalReport()" value="Xem" class="btn btn-outline-primary "/>
-                         <input type="button" onclick="resetValueMedReport(patient_info)" value="Hủy" class="btn btn-outline-danger "/>
+                         <input type="button" onclick="resetValueMedReport(patient_info)" id="clear_patient_content" value="Hủy" class="btn btn-outline-danger "/>
 
                     </div>
 <!--    medical info-->
@@ -132,7 +132,6 @@
                              >
                              <label for="medicineUsage" class="required-field">Cách dùng</label>
                          </div>
-                         <div>{{err_msg}}</div>
 
                          <button type="button" onclick="addMedToReport(medical_info)" class="btn btn-outline-primary m-1"/>Thêm
                          <button type="button" onclick="resetValueMedReport(medical_info)" class="btn btn-outline-danger "/>Hủy
@@ -142,7 +141,7 @@
             <h4>TRA CỨU THUỐC</h4>
             <input class="form-control me-2" name="keyword" type="text" id ="keyword" onkeyup="searchKeyWordTable()"
                    placeholder="Nhập mã thuốc, tên thuốc, loại thuốc...">
-            <div style="overflow-y: auto;overflow-x: hidden; max-height: 250px; width: 600px">
+            <div style="overflow-y: auto;overflow-x: auto; max-height: 250px; width: 600px">
                 <table class="table table-bordered" id="meds-table">
                     <tr>
                         <th>Mã thuốc</th>
@@ -221,14 +220,16 @@
                         <input type="button" onclick="clearMedReportSession()" value="Hủy" class="btn btn-outline-danger">
                     </form>
                 </div>
+                     {% if err_msg%}
+                    <div class="alert alert-danger mt-3 fs-5" style="text-align:center;"> {{err_msg}}</div>
+                    {% endif %}
             </div>
              {% endif %}
     </div>
     <!--     all medical report of patient-->
-    <div class="col-1"></div>
     <div class="col mt-3 hidden" id="med_report_list">
         <h4> DANH SÁCH PHIẾU KHÁM </h4>
-        <div style="overflow-y: auto;overflow-x: hidden; max-height: 300px; max-width:500px">
+        <div style="overflow-y: auto; max-height: 300px; max-width:500px">
             <table class="table table-bordered">
                 <tr>
                     <th>STT</th>
@@ -240,7 +241,11 @@
             </table>
         </div>
 
-        <div id="patient_medical_list" class="container" style="overflow-y: auto;overflow-x: hidden; max-height: 300px"></div>
+        <div id="patient_medical_list_container" class="container" style="overflow-y: auto;overflow-x: hidden; max-height: 300px">
+            <div id ="patient_no_meds"></div>
+            <div id="patient_with_med"></div>
+            <div id="patient_with_many_meds"></div>
+        </div>
 
     </div>
 </div>
@@ -259,6 +264,10 @@
     });
     $('input').on('blur change', function () {
         saveDataAfterRefresh()
+    })
+    $('#clear_patient_content').on('click', function () {
+        if($('#notIncludedMed').is(':checked') == false)
+            $("#medical_info :input").attr("disabled", false);
     })
 </script>
 {% endblock %}

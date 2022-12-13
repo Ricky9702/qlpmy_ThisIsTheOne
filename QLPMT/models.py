@@ -5,6 +5,8 @@ from sqlalchemy.orm import relationship
 from QLPMT import db, app
 from enum import Enum as UserEnum
 from flask_login import UserMixin
+
+
 class UserRole(UserEnum):
     DOCTOR = 1
     NURSE = 2
@@ -18,20 +20,23 @@ class BaseModel(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
 
-class User(BaseModel):
+class User(BaseModel, UserMixin):
     __tablename__ = 'User'
 
     name = Column(String(50), nullable=False)
     username = Column(String(50), nullable=False)
     password = Column(String(50), nullable=False)
     active = Column(Boolean, default=True)
+    image = Column(String(100), nullable=False)
     user_role = Column(Enum(UserRole))
+
     BacSi = relationship('BacSi', backref='user', lazy=True)
     YTa = relationship('YTa', backref='user', lazy=True)
     ThuNgan = relationship('ThuNgan', backref='user', lazy=True)
+    NguoiQuanTri = relationship('NguoiQuanTri', backref='user', lazy=True)
 
-    # def __str__(self):
-    #     return self.name
+    def __str__(self):
+        return self.name
 
 
 class BacSi(BaseModel):
@@ -63,36 +68,27 @@ class ThuNgan(BaseModel):
 class NguoiQuanTri(BaseModel):
     __tablename__ = 'NguoiQuanTri'
 
-    HoTen = Column(String(50), nullable=False)
+    User_id = Column(Integer, ForeignKey(User.id), nullable=False)
+    QuyDinhSoTienKham = relationship('QuyDinhSoTienKham',
+                                     backref='nguoiquantri', lazy=True)
 
-    QuanLyLoaiThuoc = relationship('QuanLyLoaiThuoc', backref='nguoiquantri', lazy=True)
-    QuanLyLoaiDonVi = relationship('QuanLyLoaiDonVi', backref='nguoiquantri', lazy=True)
-    ThongKeBaoCao = relationship('ThongKeBaoCao', backref='nguoiquantri', lazy=True)
-    QuyDinh = relationship('QuyDinh', backref='nguoiquantri', lazy=True)
-
-
-class QuyDinh(BaseModel):
-    __tablename__ = 'QuyDinh'
-
-    NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
-    SoTienKham = relationship('SoTienKham', backref='QuyDinh', lazy=True)
-    SoBenhNhaKhamTrongNgay = relationship('SoBenhNhaKhamTrongNgay', backref='QuyDinh', lazy=True)
+    QuyDinhSoBenhNhaKhamTrongNgay = relationship('QuyDinhSoBenhNhaKhamTrongNgay',
+                                                 backref='nguoiquantri', lazy=True)
 
 
-class SoTienKham(BaseModel):
+class QuyDinhSoTienKham(BaseModel):
     __tablename__ = 'SoTienKham'
 
     SoTienKham = Column(Integer, nullable=False)
-    QuyDinh_id = Column(Integer, ForeignKey(QuyDinh.id), nullable=False)
+    NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
     HoaDon = relationship('HoaDon',
                           backref='SoTienKham', lazy=True)
 
 
 class HoaDon(BaseModel):
     __tablename__ = 'HoaDon'
-    TienDonThuoc = Column(Integer, nullable=True)
     ThuNgan_id = Column(Integer, ForeignKey(ThuNgan.id), nullable=False)
-    SoTienKham_id = Column(Integer, ForeignKey(SoTienKham.id), nullable=False)
+    SoTienKham_id = Column(Integer, ForeignKey(QuyDinhSoTienKham.id), nullable=False)
 
     PhieuKhamBenh = relationship('PhieuKhamBenh',
                                  backref='hoadon', lazy=True)
@@ -125,7 +121,7 @@ class BenhNhan(BaseModel):
 class PhieuKhamBenh(BaseModel):
     __tablename__ = 'PhieuKhamBenh'
 
-    NgayKham = Column(DateTime, default=datetime.now().strftime("%d/%m/%Y"))
+    NgayKham = Column(DateTime, default=datetime.now())
     TrieuChung = Column(String(100), nullable=False)
     DuDoanBenh = Column(String(100), nullable=False)
 
@@ -136,49 +132,31 @@ class PhieuKhamBenh(BaseModel):
     HoaDon_id = Column(Integer, ForeignKey(HoaDon.id), nullable=False)
 
 
-class QuanLyLoaiThuoc(BaseModel):
-    __tablename__ = 'QuanLyLoaiThuoc'
-
-    LoaiThuoc = relationship('LoaiThuoc', backref='loaithuoc', lazy=True)
-    NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
-
-
-class QuanLyLoaiDonVi(BaseModel):
-    __tablename__ = 'QuanLyLoaiDonVi'
-
-    LoaiDonViThuoc = relationship('DonVi', backref='donvi', lazy=True)
-    NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
-
-
 class DonVi(BaseModel):
     __tablename__ = 'DonVi'
 
     TenDonVi = Column(String(20), nullable=False)
     Thuoc = relationship('Thuoc', backref='donvi', lazy=True)
-    QuanLyDonVi_id = Column(Integer, ForeignKey(QuanLyLoaiDonVi.id), nullable=False)
 
 
 class LoaiThuoc(BaseModel):
     __tablename__ = 'LoaiThuoc'
 
     TenLoaiThuoc = Column(String(50), nullable=False)
-
     Thuoc = relationship('Thuoc', backref='loaithuoc', lazy=True)
-    QuanLyLoaiThuoc_id = Column(Integer, ForeignKey(QuanLyLoaiThuoc.id), nullable=False)
 
 
 class Thuoc(BaseModel):
     __tablename__ = 'Thuoc'
-    TenThuoc = Column(String(50), nullable=False)
-    DonGia = Column(Integer, nullable=False)
-    SoLuongConLai = Column(Integer, nullable=False)
 
+    TenThuoc = Column(String(50), nullable=False)
+    SoLuongConLai = Column(Integer, nullable=False)
+    DonGia = Column(Integer, nullable=False)
     DonVi_id = Column(Integer, ForeignKey(DonVi.id), nullable=False)
     LoaiThuoc_id = Column(Integer, ForeignKey(LoaiThuoc.id), nullable=False)
-    SuDungThuoc = relationship('SuDungThuoc', backref='thuoc', lazy=False)
 
     ChiTietPhieuKhamBenh = relationship('ChiTietPhieuKhamBenh',
-                                        backref='thuoc', lazy=False)
+                                        backref='thuoc', lazy=True)
 
 
 class ChiTietPhieuKhamBenh(BaseModel):
@@ -186,133 +164,217 @@ class ChiTietPhieuKhamBenh(BaseModel):
 
     SoLuong = Column(Integer, nullable=False)
     CachDung = Column(String(50), nullable=False)
-
     PhieuKhamBenh_id = Column(Integer, ForeignKey(PhieuKhamBenh.id), nullable=False)
-    Thuoc_id = Column(Integer, ForeignKey(Thuoc.id))
+    Thuoc_id = Column(Integer, ForeignKey(Thuoc.id), nullable=True)
 
 
-class ThongKeBaoCao(BaseModel):
-    __tablename__ = 'ThongKeBaoCao'
-
-    Thang = Column(Integer, nullable=False)
-
-    NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
-    SuDungThuoc = relationship('SuDungThuoc', backref='thongkebaocao', lazy=False)
-    TanSuatKham = relationship('TanSuatKham', backref='thongkebaocao', lazy=False)
-    DoanhThu = relationship('DoanhThu', backref='thongkebaocao', lazy=False)
-
-
-class SuDungThuoc(BaseModel):
-    __tablename__ = 'SuDungThuoc'
-
-    ThongKeBaoCao_id = Column(Integer, ForeignKey(ThongKeBaoCao.id), nullable=False)
-    Thuoc_id = Column(Integer, ForeignKey(Thuoc.id), nullable=False)
-
-
-class TanSuatKham(BaseModel):
-    __tablename__ = 'TanSuatKham'
-
-    GiaTri = Column(Integer, nullable=False)
-    ThongKeBaoCao_id = Column(Integer, ForeignKey(ThongKeBaoCao.id), nullable=False)
-
-
-# class DoanhThu(BaseModel, db.Model):
-#     __tablename__ = 'DoanhThu'
-#
-#     TongDoanhThu = Column(Integer, nullable=False)
-#     ThongKeBaoCao_id = Column(Integer, ForeignKey(ThongKeBaoCao.id), nullable=False)
-#
-#     # ChiTietBaoCaoDoanhThu = relationship('CTDT',
-#     #                                      backref='doanhthu', lazy=True)
-
-
-class DoanhThu(BaseModel):
-    __tablename__ = 'DoanhThu'
-
-    TongDoanhThu = Column(Integer, nullable=False)
-    ThongKeBaoCao_id = Column(Integer, ForeignKey(ThongKeBaoCao.id), nullable=False)
-
-    ChiTietDoanhThu = relationship('ChiTietDoanhThu',
-                                   backref='DoanhThu', lazy=False)
-
-
-class ChiTietDoanhThu(BaseModel):
-    __tablename__ = 'ChiTietDoanhThu'
-
-    NgayKham = Column(DateTime, default=datetime.now())
-    SoBenhNhan = Column(Integer, nullable=False)
-    DoanhThuTheoNgay = Column(Integer, nullable=False)
-    TiLe = Column(Integer, nullable=False)
-
-    DoanhThu_id = Column(Integer, ForeignKey(DoanhThu.id), nullable=False)
-
-
-class SoBenhNhaKhamTrongNgay(BaseModel):
+class QuyDinhSoBenhNhaKhamTrongNgay(BaseModel):
     __tablename__ = 'SoBenhNhaKhamTrongNgay'
 
-    SoBenhNhaKhamTrongNgay = Column(Integer, nullable=False)
-    QuyDinh_id = Column(Integer, ForeignKey(QuyDinh.id), nullable=False)
-
-
-class UserLogin(BaseModel, UserMixin):
-    name = Column(String(50), nullable=False)
-    username = Column(String(50), nullable=False)
-    password = Column(String(50), nullable=False)
-    image = Column(String(100), nullable=False)
-    active = Column(Boolean, default=True)
-    user_role = Column(Enum(UserRole), default=UserRole.DOCTOR)
-
-    def __str__(self):
-        return self.name
+    SoBenhNhanKhamTrongNgay = Column(Integer, nullable=False)
+    NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
 
 
 if __name__ == '__main__':
     with app.app_context():
-        # db.create_all()
-        # u1 = User(name='Nguyen Van An')
-        # u2 = User(name='Nguyen Do Tai')
-        # u3 = User(name='Nguyen Yen Phi')
-        # u4 = User(name='Nguyen Thuy Linh')
+        db.create_all()
+        # import hashlib
+        #
+        # password = str(hashlib.md5('123456'.encode('utf-8')).hexdigest())
+        # u1 = User(name='Nguyen Van An', username='nguyenvanan', password=password,
+        #           image='https://res.cloudinary.com/dxxwcby8l/image/upload/v1646729569/fi9v6vdljyfmiltegh7k.jpg',
+        #           user_role=UserRole.NURSE)
+        # u2 = User(name='Nguyen Do Tai', username='nguyendotai', password=password,
+        #           image='https://res.cloudinary.com/dxxwcby8l/image/upload/v1646729569/fi9v6vdljyfmiltegh7k.jpg',
+        #           user_role=UserRole.DOCTOR)
+        # u3 = User(name='Nguyen Yen Phi', username='nguyenyenphi', password=password,
+        #           image='https://res.cloudinary.com/dxxwcby8l/image/upload/v1646729569/fi9v6vdljyfmiltegh7k.jpg',
+        #           user_role=UserRole.CASHIER)
+        # u4 = User(name='Nguyen Thuy Linh', username='nguyenthuylinh', password=password,
+        #           image='https://res.cloudinary.com/dxxwcby8l/image/upload/v1646729569/fi9v6vdljyfmiltegh7k.jpg',
+        #           user_role=UserRole.ADMIN)
         #
         # db.session.add_all([u1, u2, u3, u4])
         # db.session.commit()
-
-        # yta1 = YTa(User_id=1)
-        # yta2 = YTa(User_id=2)
         #
-        # db.session.add_all([yta1, yta2])
+        # yta = YTa(User_id=1)
+        # bacsi = BacSi(User_id=2)
+        # thungan = ThuNgan(User_id=3)
+        # nqt = NguoiQuanTri(User_id=4)
+        # db.session.add_all([yta])
+        # db.session.commit()
+        # db.session.add_all([bacsi])
+        # db.session.commit()
+        # db.session.add_all([thungan])
+        # db.session.commit()
+        # db.session.add_all([nqt])
         # db.session.commit()
 
-        # ds1 = DanhSachKham(NgayKham='2020-01-02', YTa_id=1)
-        # db.session.add_all([ds1])
+        # ds = DanhSachKham(YTa_id=1)
+        # db.session.add_all([ds])
+        # db.session.commit()
+        #
+        # stk = QuyDinhSoTienKham(SoTienKham=100000, NguoiQuanTri_id=1)
+        # db.session.add_all([stk])
+        # db.session.commit()
+        #
+        # hd = HoaDon(ThuNgan_id=1, SoTienKham_id=1)
+        # db.session.add_all([hd])
+        # db.session.commit()
+        #
+        # b1 = BenhNhan(HoTen='Nguyen Tat Tan', GioiTinh='Nam',
+        #               NamSinh='1989', DiaChi='Quận 5', DanhSachKham_id=1)
+        # b2 = BenhNhan(HoTen='Nguyen Tram Anh', GioiTinh='Nữ',
+        #               NamSinh='2000', DiaChi='Tân Phú', DanhSachKham_id=1)
+        # b3 = BenhNhan(HoTen='Le Anh Cuong', GioiTinh='Nam',
+        #               NamSinh='1997', DiaChi='Bình Thạnh', DanhSachKham_id=1)
+        # b4 = BenhNhan(HoTen='Dao Phu Anh', GioiTinh='Nam',
+        #               NamSinh='1894', DiaChi='Quận 8', DanhSachKham_id=1)
+        # b5 = BenhNhan(HoTen='Tat Tai ', GioiTinh='Nam',
+        #               NamSinh='1994', DiaChi='Quan 3', DanhSachKham_id=1)
+        # b6 = BenhNhan(HoTen='Nguyen Phu', GioiTinh='Nam',
+        #               NamSinh='1993', DiaChi='Quan 8', DanhSachKham_id=1)
+        # b7 = BenhNhan(HoTen='Nguyen Anh Hao', GioiTinh='Nam',
+        #               NamSinh='1992', DiaChi='Quan 3', DanhSachKham_id=1)
+        # b8 = BenhNhan(HoTen='Nguyen Tam Phuong', GioiTinh='Nữ',
+        #               NamSinh='2002', DiaChi='Go Vap', DanhSachKham_id=1)
+        #
+        # db.session.add_all([b1,
+        #                     b2,
+        #                     b3,
+        #                     b4
+        #                    ])
         # db.session.commit()
 
 
-        # #QuanLyThuoc
-        # ql1 = QuanLyLoaiThuoc()
-        # #QuanLyDonViThuoc
-        #LoaiThuoc
-        lt1 = LoaiThuoc(TenLoaiThuoc='Cam',QuanLyLoaiThuoc_id=1)
-        lt2 = LoaiThuoc(TenLoaiThuoc='So Mui',QuanLyLoaiThuoc_id=1)
-        # #Thuoc
-        # t1 = Thuoc(DonGia=30000,SoLuongConLai=300)
-        # t2 = Thuoc(DonGia=40000,SoLuongConLai=400)
-        # #DonViThuoc
         # dv1 = DonVi(TenDonVi='Vien')
-        # dv2 = DonVi(TenDonVi='Vy')
-        db.session.add_all([lt1, lt2])
-        db.session.commit()
-
-
-        # p1 = PhieuKhamBenh(NgayKham='2020-01-22', TrieuChung='ho', DuDoanBenh='ho',
-        #                    BacSi_id=1, BenhNhan_id=1, HoaDon_id=1)
-        # p2 = PhieuKhamBenh(NgayKham='2020-01-27', TrieuChung='ho', DuDoanBenh='ho',
-        #                    BacSi_id=1, BenhNhan_id=1, HoaDon_id=1)
-        # db.session.add_all([p2])
+        # dv2 = DonVi(TenDonVi='Chai')
+        # dv3 = DonVi(TenDonVi='Vy')
+        # db.session.add_all([dv1, dv2, dv3])
         # db.session.commit()
-        # import hashlib
-        # password = str(hashlib.md5('123456'.encode('utf-8')).hexdigest())
         #
-        # u = User(name='Thanh', username='admin', password=password, user_role=UserRole.ADMIN)
-        # db.session.add(u)
+        # lt1 = LoaiThuoc(TenLoaiThuoc="Thuốc gây nghiện")
+        # lt2 = LoaiThuoc(TenLoaiThuoc="Thuốc kháng sinh")
+        # lt3 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị virút")
+        # lt4 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị nấm")
+        # lt5 = LoaiThuoc(TenLoaiThuoc="Thuốc chống viêm không steroid ")
+        # lt6 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị bệnh Gút")
+        # lt7 = LoaiThuoc(TenLoaiThuoc="Thuốc cấp cứu và chống độc")
+        # lt8 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị ung thư ")
+        # lt9 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị parkinson")
+        # lt10 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị lao")
+        # lt11 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị sốt rét")
+        # lt12 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị đau nửa đầu")
+        # lt13 = LoaiThuoc(TenLoaiThuoc="Thuốc tác động lên quá trình đông máu")
+        # lt14 = LoaiThuoc(TenLoaiThuoc="Máu, chế phẩm máu, dung dịch cao phân tử")
+        # lt15 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị bệnh mạch vành")
+        # lt16 = LoaiThuoc(TenLoaiThuoc="Thuốc dùng cho chẩn đoán")
+        # lt17 = LoaiThuoc(TenLoaiThuoc="Thuốc lợi tiểu")
+        # lt18 = LoaiThuoc(TenLoaiThuoc="Thuốc chống loét dạ dày")
+        # lt19 = LoaiThuoc(TenLoaiThuoc="Hooc môn ")
+        # lt20 = LoaiThuoc(TenLoaiThuoc="Huyết thanh và globulin miễn dịch")
+        # lt21 = LoaiThuoc(TenLoaiThuoc="Thuốc giãn cơ và tăng trương lực cơ")
+        # lt22 = LoaiThuoc(TenLoaiThuoc="Sinh phẩm dùng chữa bệnh (trừ men tiêu hoá)")
+        # lt23 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị rối loạn cương")
+        # lt24 = LoaiThuoc(TenLoaiThuoc="Dung dịch truyền tĩnh mạch.")
+        # lt25 = LoaiThuoc(TenLoaiThuoc="Thuốc làm co, dãn đồng tử và giảm nhãn áp")
+        # lt26 = LoaiThuoc(TenLoaiThuoc="Thuốc thúc đẻ, cầm máu sau đẻ và chống đẻ non")
+        # lt27 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị hen")
+        # lt28 = LoaiThuoc(TenLoaiThuoc="Thuốc chống loạn nhịp")
+        # lt29 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị tăng huyết áp")
+        # lt30 = LoaiThuoc(TenLoaiThuoc="Thuốc điều trị hạ huyết áp")
+        #
+        # db.session.add_all([lt1,
+        #                     lt2,
+        #                     lt3,
+        #                     lt4,
+        #                     lt5,
+        #                     lt6,
+        #                     lt7,
+        #                     lt8,
+        #                     lt9,
+        #                     lt10,
+        #                     lt11,
+        #                     lt12,
+        #                     lt13,
+        #                     lt14,
+        #                     lt15,
+        #                     lt16,
+        #                     lt17,
+        #                     lt18,
+        #                     lt19,
+        #                     lt20,
+        #                     lt21,
+        #                     lt22,
+        #                     lt23,
+        #                     lt24,
+        #                     lt25,
+        #                     lt26,
+        #                     lt27,
+        #                     lt28,
+        #                     lt29,
+        #                     lt30])
+        # db.session.commit()
+        #
+        # t1 = Thuoc(TenThuoc="Paracetamol", SoLuongConLai=100, DonGia=20000, DonVi_id=1, LoaiThuoc_id=1)
+        # t2 = Thuoc(TenThuoc="Tylenol", SoLuongConLai=112, DonGia=22000, DonVi_id=1, LoaiThuoc_id=2)
+        # t3 = Thuoc(TenThuoc="Hapacol", SoLuongConLai=124, DonGia=20300, DonVi_id=2, LoaiThuoc_id=3)
+        # t4 = Thuoc(TenThuoc="Efferalgant", SoLuongConLai=123, DonGia=30000, DonVi_id=1, LoaiThuoc_id=15)
+        # t5 = Thuoc(TenThuoc="Ibuprofen", SoLuongConLai=222, DonGia=20111, DonVi_id=2, LoaiThuoc_id=16)
+        # t6 = Thuoc(TenThuoc="Mobic", SoLuongConLai=234, DonGia=32111, DonVi_id=1, LoaiThuoc_id=17)
+        # t7 = Thuoc(TenThuoc="Alexan", SoLuongConLai=234, DonGia=63444, DonVi_id=2, LoaiThuoc_id=25)
+        # t8 = Thuoc(TenThuoc="Smecta", SoLuongConLai=123, DonGia=50000, DonVi_id=1, LoaiThuoc_id=22)
+        # t9 = Thuoc(TenThuoc="Motilum", SoLuongConLai=344, DonGia=100000, DonVi_id=1, LoaiThuoc_id=21)
+        # t10 = Thuoc(TenThuoc="Becberin", SoLuongConLai=234, DonGia=20000, DonVi_id=1, LoaiThuoc_id=20)
+        # t11 = Thuoc(TenThuoc="Loratadine", SoLuongConLai=4675, DonGia=932874, DonVi_id=3, LoaiThuoc_id=19)
+        # t12 = Thuoc(TenThuoc="Betadine", SoLuongConLai=456, DonGia=29000, DonVi_id=2, LoaiThuoc_id=18)
+        # t13 = Thuoc(TenThuoc="Ketamine", SoLuongConLai=456, DonGia=2000, DonVi_id=2, LoaiThuoc_id=1)
+        # t14 = Thuoc(TenThuoc="Natufib", SoLuongConLai=345, DonGia=20000, DonVi_id=1, LoaiThuoc_id=2)
+        # t15 = Thuoc(TenThuoc="Optibac", SoLuongConLai=643, DonGia=87990, DonVi_id=1, LoaiThuoc_id=3)
+        # t16 = Thuoc(TenThuoc="Acetaminophen", SoLuongConLai=3434, DonGia=80000, DonVi_id=1, LoaiThuoc_id=4)
+        # t17 = Thuoc(TenThuoc="Panadol Extrat1", SoLuongConLai=234, DonGia=43000, DonVi_id=1, LoaiThuoc_id=5)
+        # t18 = Thuoc(TenThuoc="V Rohto", SoLuongConLai=234, DonGia=20000, DonVi_id=2, LoaiThuoc_id=24)
+        # t19 = Thuoc(TenThuoc="Panthenol", SoLuongConLai=234, DonGia=20000, DonVi_id=2, LoaiThuoc_id=22)
+        # t20 = Thuoc(TenThuoc="Hidrasec", SoLuongConLai=234, DonGia=20000, DonVi_id=1, LoaiThuoc_id=14)
+        # t21 = Thuoc(TenThuoc="Amoxicillin ", SoLuongConLai=1235, DonGia=320000, DonVi_id=3, LoaiThuoc_id=4)
+        # t22 = Thuoc(TenThuoc="Neocodion", SoLuongConLai=6457, DonGia=983000, DonVi_id=3, LoaiThuoc_id=15)
+        # t23 = Thuoc(TenThuoc="Omeprazol", SoLuongConLai=645, DonGia=20000, DonVi_id=3, LoaiThuoc_id=5)
+        # t24 = Thuoc(TenThuoc="Docxycyclin", SoLuongConLai=453, DonGia=20000, DonVi_id=1, LoaiThuoc_id=14)
+        # t25 = Thuoc(TenThuoc="Cefnidir ", SoLuongConLai=345, DonGia=12900, DonVi_id=3, LoaiThuoc_id=5)
+        # t26 = Thuoc(TenThuoc="Cefpodoxime", SoLuongConLai=3545, DonGia=20000, DonVi_id=1, LoaiThuoc_id=7)
+        # t27 = Thuoc(TenThuoc="Celecoxib", SoLuongConLai=5345, DonGia=89000, DonVi_id=3, LoaiThuoc_id=30)
+        # t28 = Thuoc(TenThuoc="Piroxicam", SoLuongConLai=345, DonGia=99000, DonVi_id=1, LoaiThuoc_id=20)
+        # t29 = Thuoc(TenThuoc="Prednisolon", SoLuongConLai=3455, DonGia=600000, DonVi_id=3, LoaiThuoc_id=2)
+        # t30 = Thuoc(TenThuoc="Methylprednisolon", SoLuongConLai=3453, DonGia=3000000, DonVi_id=1, LoaiThuoc_id=18)
+        # db.session.add_all([t1,
+        #                     t2,
+        #                     t3,
+        #                     t4,
+        #                     t5,
+        #                     t6,
+        #                     t7,
+        #                     t8,
+        #                     t9,
+        #                     t10,
+        #                     t11,
+        #                     t12,
+        #                     t13,
+        #                     t14,
+        #                     t15,
+        #                     t16,
+        #                     t17,
+        #                     t18,
+        #                     t19,
+        #                     t20,
+        #                     t21,
+        #                     t22,
+        #                     t23,
+        #                     t24,
+        #                     t25,
+        #                     t26,
+        #                     t27,
+        #                     t28,
+        #                     t29,
+        #                     t30
+        #                     ])
         # db.session.commit()

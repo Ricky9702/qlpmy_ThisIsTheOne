@@ -31,7 +31,6 @@ def online_register():
 @app.route('/medical-report', methods=['get', 'post'])
 def medical_report():
     key = app.config['MEDICAL_REPORT_KEY']
-    key2 = app.config['MEDICAL_REPORT_SAVE_KEY']
     med_report = session.get(key)
     med_type = dao.load_med_type()
     med_info = dao.load_med_info()
@@ -54,15 +53,13 @@ def medical_report():
                 dao.add_medical_report(ngaykham=data.get('report_date'),
                                        mabenhnhan=int(data.get('patient_id')),
                                        trieuchung=data.get('symptoms'),
-                                       dudoanbenh=data.get('diagnose'),
-                                       tenloaithuoc=data.get('med_type'),
-                                       tenthuoc=data.get('med_name'),
-                                       soluong=int(data.get('med_quantity')),
-                                       cachdung=data.get('med_usage'))
+                                       dudoanbenh=data.get('diagnose'))
+                dao.add_detial_medical_report(tenloaithuoc=data.get('med_type'),
+                                              tenthuoc=data.get('med_name'),
+                                              soluong=int(data.get('med_quantity')),
+                                              cachdung=data.get('med_usage'))
                 dao.update_med_amount(med_name=data.get('med_name'), amount=data.get('med_quantity'))
-            err_msg = "Lưu phiếu khám bệnh thành công!!!"
-            del session[key]
-            del session[key2]
+                err_msg = "Lưu phiếu khám bệnh thành công!!!"
         except:
             err_msg = 'Hệ thống đang có lỗi! Vui lòng quay lại sau!'
     return render_template('medical_report.html', med_info=med_info, med_type=med_type, med_name=med_name,
@@ -75,8 +72,10 @@ def load_med_name_by_type():
     med_name = session.get(key)
     data = request.json
     med_type = data['med_type']
+    print(med_type)
     result = []
     filter = dao.load_med_name(med_type=med_type)
+    print(filter)
     for item in filter:
         result.append({
             'med_name': item.TenThuoc
@@ -182,14 +181,12 @@ def show_patient_med_report_by_date():
 def clear_med_report_session():
     key = app.config['MEDICAL_REPORT_KEY']
     key2 = app.config['MEDICAL_REPORT_SAVE_KEY']
-    med_report = session.get(key)
-    med_report_save = session.get(key2)
-    med_report_save.clear()
-    print("Before: ", med_report)
-    del session[key]
-    print("After: ", med_report)
-    res = make_response(jsonify(med_report), 200)
-    return res
+    try:
+        del session[key]
+        del session[key2]
+        return jsonify({'status': 204})
+    except:
+        return jsonify({'status': 404})
 
 
 @app.route('/api/add-med-report', methods=['post'])
