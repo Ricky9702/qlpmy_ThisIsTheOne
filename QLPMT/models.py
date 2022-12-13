@@ -1,10 +1,10 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text, Enum, Date
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text, Enum, DateTime
 from sqlalchemy.orm import relationship
 from QLPMT import db, app
 from enum import Enum as UserEnum
 from flask_login import UserMixin
-
-
 class UserRole(UserEnum):
     DOCTOR = 1
     NURSE = 2
@@ -22,10 +22,10 @@ class User(BaseModel):
     __tablename__ = 'User'
 
     name = Column(String(50), nullable=False)
-    # username = Column(String(50), nullable=False)
-    # password = Column(String(50), nullable=False)
-    # active = Column(Boolean, default=True)
-    # user_role = Column(Enum(UserRole))
+    username = Column(String(50), nullable=False)
+    password = Column(String(50), nullable=False)
+    active = Column(Boolean, default=True)
+    user_role = Column(Enum(UserRole))
     BacSi = relationship('BacSi', backref='user', lazy=True)
     YTa = relationship('YTa', backref='user', lazy=True)
     ThuNgan = relationship('ThuNgan', backref='user', lazy=True)
@@ -101,7 +101,7 @@ class HoaDon(BaseModel):
 class DanhSachKham(BaseModel):
     __tablename__ = 'DanhSachKham'
 
-    NgayKham = Column(Date, nullable=False)
+    NgayKham = Column(DateTime, default=datetime.now())
 
     YTa_id = Column(Integer, ForeignKey(YTa.id), nullable=False)
 
@@ -125,7 +125,7 @@ class BenhNhan(BaseModel):
 class PhieuKhamBenh(BaseModel):
     __tablename__ = 'PhieuKhamBenh'
 
-    NgayKham = Column(Date, nullable=False)
+    NgayKham = Column(DateTime, default=datetime.now().strftime("%d/%m/%Y"))
     TrieuChung = Column(String(100), nullable=False)
     DuDoanBenh = Column(String(100), nullable=False)
 
@@ -169,16 +169,16 @@ class LoaiThuoc(BaseModel):
 
 class Thuoc(BaseModel):
     __tablename__ = 'Thuoc'
-
+    TenThuoc = Column(String(50), nullable=False)
     DonGia = Column(Integer, nullable=False)
     SoLuongConLai = Column(Integer, nullable=False)
 
     DonVi_id = Column(Integer, ForeignKey(DonVi.id), nullable=False)
     LoaiThuoc_id = Column(Integer, ForeignKey(LoaiThuoc.id), nullable=False)
-    SuDungThuoc = relationship('SuDungThuoc', backref='thuoc', lazy=True)
+    SuDungThuoc = relationship('SuDungThuoc', backref='thuoc', lazy=False)
 
     ChiTietPhieuKhamBenh = relationship('ChiTietPhieuKhamBenh',
-                                        backref='thuoc', lazy=True)
+                                        backref='thuoc', lazy=False)
 
 
 class ChiTietPhieuKhamBenh(BaseModel):
@@ -197,9 +197,9 @@ class ThongKeBaoCao(BaseModel):
     Thang = Column(Integer, nullable=False)
 
     NguoiQuanTri_id = Column(Integer, ForeignKey(NguoiQuanTri.id), nullable=False)
-    SuDungThuoc = relationship('SuDungThuoc', backref='thongkebaocao', lazy=True)
-    TanSuatKham = relationship('TanSuatKham', backref='thongkebaocao', lazy=True)
-    DoanhThu = relationship('DoanhThu', backref='thongkebaocao', lazy=True)
+    SuDungThuoc = relationship('SuDungThuoc', backref='thongkebaocao', lazy=False)
+    TanSuatKham = relationship('TanSuatKham', backref='thongkebaocao', lazy=False)
+    DoanhThu = relationship('DoanhThu', backref='thongkebaocao', lazy=False)
 
 
 class SuDungThuoc(BaseModel):
@@ -233,13 +233,13 @@ class DoanhThu(BaseModel):
     ThongKeBaoCao_id = Column(Integer, ForeignKey(ThongKeBaoCao.id), nullable=False)
 
     ChiTietDoanhThu = relationship('ChiTietDoanhThu',
-                                   backref='DoanhThu', lazy=True)
+                                   backref='DoanhThu', lazy=False)
 
 
 class ChiTietDoanhThu(BaseModel):
     __tablename__ = 'ChiTietDoanhThu'
 
-    Ngay = Column(Date, nullable=False)
+    NgayKham = Column(DateTime, default=datetime.now())
     SoBenhNhan = Column(Integer, nullable=False)
     DoanhThuTheoNgay = Column(Integer, nullable=False)
     TiLe = Column(Integer, nullable=False)
@@ -268,7 +268,7 @@ class UserLogin(BaseModel, UserMixin):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        # db.create_all()
         # u1 = User(name='Nguyen Van An')
         # u2 = User(name='Nguyen Do Tai')
         # u3 = User(name='Nguyen Yen Phi')
@@ -287,15 +287,32 @@ if __name__ == '__main__':
         # db.session.add_all([ds1])
         # db.session.commit()
 
-        p1 = PhieuKhamBenh(NgayKham='2020-01-22', TrieuChung='ho', DuDoanBenh='ho',
-                           BacSi_id=1, BenhNhan_id=1, HoaDon_id=1)
-        p2 = PhieuKhamBenh(NgayKham='2020-01-27', TrieuChung='ho', DuDoanBenh='ho',
-                           BacSi_id=1, BenhNhan_id=1, HoaDon_id=1)
-        db.session.add_all([p2])
+
+        # #QuanLyThuoc
+        # ql1 = QuanLyLoaiThuoc()
+        # #QuanLyDonViThuoc
+        #LoaiThuoc
+        lt1 = LoaiThuoc(TenLoaiThuoc='Cam',QuanLyLoaiThuoc_id=1)
+        lt2 = LoaiThuoc(TenLoaiThuoc='So Mui',QuanLyLoaiThuoc_id=1)
+        # #Thuoc
+        # t1 = Thuoc(DonGia=30000,SoLuongConLai=300)
+        # t2 = Thuoc(DonGia=40000,SoLuongConLai=400)
+        # #DonViThuoc
+        # dv1 = DonVi(TenDonVi='Vien')
+        # dv2 = DonVi(TenDonVi='Vy')
+        db.session.add_all([lt1, lt2])
         db.session.commit()
+
+
+        # p1 = PhieuKhamBenh(NgayKham='2020-01-22', TrieuChung='ho', DuDoanBenh='ho',
+        #                    BacSi_id=1, BenhNhan_id=1, HoaDon_id=1)
+        # p2 = PhieuKhamBenh(NgayKham='2020-01-27', TrieuChung='ho', DuDoanBenh='ho',
+        #                    BacSi_id=1, BenhNhan_id=1, HoaDon_id=1)
+        # db.session.add_all([p2])
+        # db.session.commit()
         # import hashlib
-        #
         # password = str(hashlib.md5('123456'.encode('utf-8')).hexdigest())
-        # u = UserLogin(username='admin', password=password, user_role=UserRole.ADMIN)
+        #
+        # u = User(name='Thanh', username='admin', password=password, user_role=UserRole.ADMIN)
         # db.session.add(u)
         # db.session.commit()

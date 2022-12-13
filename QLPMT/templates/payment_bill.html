@@ -2,32 +2,33 @@
 
 {% block content %}
 <h1>Hóa đơn thanh toán</h1>
-<div class="container">
-  <table class="table">
-    <tbody>
-      <tr>
-        <td>Họ tên</td>
-        <td>Doe</td>
-        <td>john@example.com</td>
-      </tr>
-      <tr>
-        <td>Mary</td>
-        <td>Moe</td>
-        <td>mary@example.com</td>
-      </tr>
-      <tr>
-        <td>July</td>
-        <td>Dooley</td>
-        <td>july@example.com</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-{% for p in phieu %}
+{% if 'med_report' in session and session['med_report'] %}
+<table class="table">
     <tr>
-        <td>{{ p.id }}</td>
+        <th>Mã sản phẩm</th>
+        <th>Tên sản phẩm</th>
+        <th>Đơn giá</th>
+        <th>Số lượng</th>
+        <th></th>
+        <th></th>
+        <th></th>
+    </tr>
+    {% for c in session['med_report'].values() %}
+    <tr id="med_report{{ c.id }}">
+        <td>{{ c.id }}</td>
+        <td>{{ c.name }}</td>
+        <td>{{ c.type }}</td>
+        <td>{{ c.quantity }}</td>
+        <td>{{ c.usage }}</td>
+        <td>{{ "{:,.0f}".format(c.price) }} VNĐ</td>
+        <td>
+            <input type="number" value="{{ c.quantity }}" onblur="updateCart({{ c.id }}, this)" class="form-control" />
+        </td>
+        <td>
+            <input type="button" value="Xóa" onclick="deleteCart({{ c.id }})" class="btn btn-danger" />
+        </td>
     </tr>
     {% endfor %}
-
-
+{% endif %}
+</table>
 {% endblock %}
