@@ -1,5 +1,4 @@
 function addMedToReport(element_id) {
-
     let not_included_med = document.getElementById("notIncludedMed");
     let patient_info = document.getElementById("patient_info")
     let medical_info = document.getElementById("medical_info")
@@ -116,9 +115,9 @@ function clearMedReportSession() {
                 console.info(data)
                 if (data.status === 204) {
                     alert("Hủy thành công!!!")
+                    location.reload()
                     resetValueMedReport(patient_info)
                     resetValueMedReport(medical_info)
-                    location.reload()
                 }
                 else {
                     alert("Hủy thất bại!!!")

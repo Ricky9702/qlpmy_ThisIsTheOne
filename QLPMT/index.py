@@ -1,5 +1,5 @@
 
-from flask import render_template, request, redirect, session, jsonify, url_for, make_response
+from flask import render_template, request, redirect, session, jsonify, url_for, make_response, flash
 from QLPMT import app, dao, login
 from flask_login import login_user, logout_user, current_user
 from QLPMT.decorators import annonymous_user
@@ -38,7 +38,6 @@ def medical_report():
     med_type = dao.load_med_type()
     med_info = dao.load_med_info()
     med_name = dao.load_med_name()
-    err_msg = ''
     # if current_user.is_authenticated:
     #     err_msg = ''
     #     if current_user.user_role == 'NURSE':
@@ -63,12 +62,12 @@ def medical_report():
                                               soluong=int(data.get('med_quantity')),
                                               cachdung=data.get('med_usage'))
                 dao.update_med_amount(med_name=data.get('med_name'), amount=data.get('med_quantity'))
-            err_msg = "Lưu phiếu khám bệnh thành công!!!"
+            flash('Lưu phiếu khám bệnh thành công!!!')
+            return redirect('/medical-report')
         except Exception as ex:
             print(ex)
-            err_msg = 'Hệ thống đang có lỗi! Vui lòng quay lại sau!'
-    return render_template('medical_report.html', med_info=med_info, med_type=med_type, med_name=med_name,
-                           err_msg=err_msg)
+            flash('Lưu phiếu khám bệnh thất bại!!!')
+    return render_template('medical_report.html', med_info=med_info, med_type=med_type, med_name=med_name)
 
 
 @app.route('/api/load-med-name', methods=['post'])
@@ -204,6 +203,7 @@ def clear_medical_report_session():
         del session[key]
     session.pop('medical_reports', None)
     session.pop('medical_report_medicine', None)
+    session.pop('medical_report_save', None)
     return jsonify({'status': 204})
 
 
