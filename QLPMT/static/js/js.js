@@ -1,13 +1,14 @@
 function addMedToReport(element_id) {
-    let not_included_med = document.getElementById("notIncludedMed").value;
+
+    let not_included_med = document.getElementById("notIncludedMed");
     let patient_info = document.getElementById("patient_info")
     let medical_info = document.getElementById("medical_info")
-    if (element_id == medical_info && findEmptyInputInDiv(medical_info) && not_included_med =='0')
+    if (element_id == medical_info && findEmptyInputInDiv(medical_info) && not_included_med.value =='0')
             alert("Vui lòng điền đầy đủ các thông tin thuốc trong phiếu khám bệnh!!!");
     else if(element_id == patient_info && findEmptyInputInDiv(patient_info))
            alert("Vui lòng điền đầy đủ các thông tin bệnh nhân trong phiếu khám bệnh!!!");
     else if (element_id == patient_info && findEmptyInputInDiv(patient_info) == false
-                && not_included_med =='0' && findEmptyInputInDiv(medical_info))
+                && not_included_med.value =='0' && findEmptyInputInDiv(medical_info))
              alert("Vui lòng điền đầy đủ các thông tin thuốc trong phiếu khám bệnh hoặc chọn không kê khai thuốc!!!");
     else {
             fetch('/api/add-med-report', {
@@ -20,16 +21,31 @@ function addMedToReport(element_id) {
                 "med_name": document.getElementById("medicineName").value,
                 "med_type": document.getElementById("medicineType").value,
                 "med_quantity": +document.getElementById("medicineQuantity").value,
-                "med_usage": document.getElementById("medicineUsage").value
+                "med_usage": document.getElementById("medicineUsage").value,
+                "not_included_med": not_included_med.value
                 }),
                 headers: {
                     'Content-Type': 'application/json'
                 }
             }).then(res => res.json()).then(data => {
+                            console.info(data.toString().length)
                             console.info(data)
+                            if (data.error === "no patient found")
+                                alert(`Không tìm thấy bệnh nhân trong danh sách khám ngày ${document.getElementById("medicalDate").value}`)
+                            else if (data.error === 'no medicine found')
+                                alert("Không tồn tại thuốc")
+                            else if (data.toString().length > 0) {
                                 alert("Thêm thành công!!!");
-                                resetValueMedReport(medical_info)
                                 refreshMedReportContent();
+                                document.getElementById("save_report").disabled=true;
+                                document.getElementById("clear_report").disabled=true;
+                                if (not_included_med.value != '1')
+                                  resetValueMedReport(medical_info)
+                                else
+                                    not_included_med.disabled = true;
+                            }
+                            else
+                                alert("Thêm thất bại!!!");
                         }).catch(err => console.error(err))
         }
 }
@@ -97,11 +113,12 @@ function resetValueMedReport(element_id) {
 function clearMedReportSession() {
     if (confirm("Bạn chắc chắn hủy phiếu khám bệnh không ") == true) {
         fetch('/api/clear-med-report').then(res => res.json()).then(data => {
-                if (data.status != 500) {
+                console.info(data)
+                if (data.status === 204) {
                     alert("Hủy thành công!!!")
-                    refreshMedReportContent()
                     resetValueMedReport(patient_info)
                     resetValueMedReport(medical_info)
+                    location.reload()
                 }
                 else {
                     alert("Hủy thất bại!!!")
@@ -112,7 +129,6 @@ function clearMedReportSession() {
 
 function refreshMedReportContent() {
     $("#medical_report_content").load(location.href + " #medical_report_content");
-     $("#notIncludedMedDiv").load(location.href + " #notIncludedMedDiv");
 }
 
 function loadMedNameByType() {
@@ -132,8 +148,10 @@ function loadMedNameByType() {
 
 function showPatientMedicalReport() {
     let patient_id = document.getElementById("patientID").value;
-    if (patient_id == "")
-        alert("Vui lòng nhập mã bệnh nhân để tiếp tục tra cứu");
+    if (patient_id == "") {
+            alert("Vui lòng nhập mã bệnh nhân để tiếp tục tra cứu");
+            $('#medical_report_list').hide()
+    }
     else {
     fetch('/api/load-patient-med-report', {
             method: "post",
@@ -144,29 +162,27 @@ function showPatientMedicalReport() {
                 'Content-Type': 'application/json'
             }
             }).then(res => res.json()).then(data => {
-                    console.info(data)
-                    console.info(data[0])
-                    let h = ''
-                if (data.toString().length > 0) {
-                    $('#medical_report_list').show()
-                    for(let i = 0; i< data.length; i++) {
-                        h += `
-                                <tr>
-                                    <td>${(i+1)}</td>
-                                    <td id='${data[i].patient_id}'> ${data[i]["patient_name"]}</td>
-                                    <td id='date${(i+1)}'>${data[i]["med_date"]}</td>
-                                    <td>
-                                        <input type="button" value="Xem" class="btn btn-primary" onclick=showPatientMedicalReportByDate(${data[i].patient_id},date${(i+1)})>
-                                    </td>
-                                </tr>`
-                    }
-                let d = document.getElementById('patient_medical_date');
-                d.innerHTML = h;
+                if (data.error === "no patient found") {
+                  alert(`bệnh nhân không đăng ký khám ngày ${document.getElementById("medicalDate").value}`)
+                  $('#medical_report_list').hide()
                 }
                 else {
-                    alert("Không tồn tại mã bệnh nhân!!!")
-                    $('#medical_report_list').hide()
-                }
+                        let h = ''
+                        $('#medical_report_list').toggle()
+                        for(let i = 0; i< data.length; i++) {
+                            h += `
+                                    <tr>
+                                        <td>${(i+1)}</td>
+                                        <td id='${data[i].patient_id}'> ${data[i]["patient_name"]}</td>
+                                        <td id='date${(i+1)}'>${data[i]["med_date"]}</td>
+                                        <td>
+                                            <input type="button" value="Xem" class="btn btn-primary" onclick=showPatientMedicalReportByDate(${data[i].patient_id},date${(i+1)})>
+                                        </td>
+                                    </tr>`
+                        }
+                         let d = document.getElementById('patient_medical_date');
+                         d.innerHTML = h;
+                     }
                 }).catch(err => console.error(err))
     }
 }
@@ -195,7 +211,7 @@ function showPatientMedicalReportByDate(patient_id,date) {
                                      d1 += `
                                           </table>
                                          <p>-----------------------------------------------------------------------------</p>
-                                         <p class="fs-5">Phiếu khám: ${(i+1)}</p>
+                                         <p class="fs-5">Phiếu khám: ${data[i].medical_report.id}</p>
                                          <p class="fs-5">Ngày khám: ${data[i].medical_report.med_date}</p>
                                          <p class="fs-5">Triệu chứng: ${data[i].medical_report.symptoms}</p>
                                          <p class="fs-5">Dự đoán bệnh: ${data[i].medical_report.diagnose}</p>
@@ -230,7 +246,7 @@ function showPatientMedicalReportByDate(patient_id,date) {
                             else {
                                  d0 += `
                                      <p>-----------------------------------------------------------------------------</p>
-                                     <p class="fs-5">Phiếu khám: ${(i+1)}</p>
+                                     <p class="fs-5">Phiếu khám: ${data[i].medical_report.id}</p>
                                      <p class="fs-5">Ngày khám: ${data[i].medical_report.med_date}</p>
                                      <p class="fs-5">Triệu chứng: ${data[i].medical_report.symptoms}</p>
                                      <p class="fs-5">Dự đoán bệnh: ${data[i].medical_report.diagnose}</p>
@@ -303,39 +319,3 @@ function searchKeyWordTable() {
     }
   }
 }
-//                                        if (j == data.length - 1) {
-//                                            d1 += ` <p>------------------------</p>
-//                                                    <p class="fs-5">Phiếu khám: ${(i+1)}</p>
-//                                                    <p class="fs-5">Ngày khám: ${data[i].med_date}</p>
-//                                                    <p class="fs-5">Triệu chứng: ${data[i].symptoms}</p>
-//                                                    <p class="fs-5">Dự đoán bệnh: ${data[i].diagnose}</p>
-//                                            `
-//                                            d2 += `
-//                                                            <tr>
-//                                                            <td>${data[i].med_name}</td>
-//                                                            <td>${data[i].med_type}</td>
-//                                                            <td>${data[i].med_unit}</td>
-//                                                            <td>${data[i].med_quantity}</td>
-//                                                            <td>${data[i].med_usage}</td>
-//                                                            </tr>
-//                                            `
-//                                        }
-//                                        else {
-
-//                                                                    if (foundDuplicate == false) {
-//                                            d1 += ` <p>------------------------</p>
-//                                                    <p class="fs-5">Phiếu khám: ${(i+1)}</p>
-//                                                    <p class="fs-5">Ngày khám: ${data[i].med_date}</p>
-//                                                    <p class="fs-5">Triệu chứng: ${data[i].symptoms}</p>
-//                                                    <p class="fs-5">Dự đoán bệnh: ${data[i].diagnose}</p>
-//                                            `
-//                                            d2 += `
-//                                                            <tr>
-//                                                            <td>${data[i].med_name}</td>
-//                                                            <td>${data[i].med_type}</td>
-//                                                            <td>${data[i].med_unit}</td>
-//                                                            <td>${data[i].med_quantity}</td>
-//                                                            <td>${data[i].med_usage}</td>
-//                                                            </tr>
-//                                            `
-//                            }

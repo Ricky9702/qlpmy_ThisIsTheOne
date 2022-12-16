@@ -1,7 +1,7 @@
 from sqlalchemy import func, asc, delete
 
 from QLPMT.models import User, BenhNhan, DanhSachKham, UserRole, PhieuKhamBenh, ChiTietPhieuKhamBenh, \
-    LoaiThuoc, Thuoc, DonVi, BacSi, HoaDon
+    LoaiThuoc, Thuoc, DonVi, BacSi, HoaDon, QuyDinhSoTienKham
 from QLPMT import db
 import hashlib
 
@@ -15,9 +15,19 @@ def online_register(HoTen, GioiTinh, NamSinh, DiaChi, DanhSachKham_id):
 # Phieu kham benhbe
 def add_medical_report(ngaykham, mabenhnhan, trieuchung, dudoanbenh):
     pk = PhieuKhamBenh(NgayKham=ngaykham, TrieuChung=trieuchung, DuDoanBenh=dudoanbenh, BacSi_id=1,
-                       BenhNhan_id=mabenhnhan, HoaDon_id=1)
+                       BenhNhan_id=mabenhnhan, HoaDon_id=mabenhnhan)
     db.session.add(pk)
     db.session.commit()
+
+
+def add_payment(payment_id):
+    found = db.session.query(db.session.query(HoaDon.id).filter_by(id=payment_id).exists()).scalar()
+    print(found)
+    if not found:
+        query = db.session.query(func.max(QuyDinhSoTienKham.id))
+        hd = HoaDon(id=payment_id, ThuNgan_id=1, SoTienKham_id=query)
+        db.session.add(hd)
+        db.session.commit()
 
 
 def add_detail_medical_report(tenloaithuoc, tenthuoc, soluong, cachdung):
@@ -64,8 +74,8 @@ def get_medical_date_of_patient(patient_id):
 
 
 def load_detail_medical_report(med_report_id):
-    return db.session.query(ChiTietPhieuKhamBenh, PhieuKhamBenh).\
-        join(PhieuKhamBenh, ChiTietPhieuKhamBenh.PhieuKhamBenh_id.__eq__(PhieuKhamBenh.id)).\
+    return db.session.query(ChiTietPhieuKhamBenh, PhieuKhamBenh). \
+        join(PhieuKhamBenh, ChiTietPhieuKhamBenh.PhieuKhamBenh_id.__eq__(PhieuKhamBenh.id)). \
         filter(PhieuKhamBenh.id == med_report_id).all()
 
 
@@ -92,8 +102,10 @@ def get_med_unit(med_name):
         filter(Thuoc.TenThuoc.__eq__(med_name)).scalar()
 
 
-def get_patient_name(id):
-    return db.session.query(BenhNhan.HoTen).filter(BenhNhan.id.__eq__(id)).scalar()
+def get_patient_name(patient_id):
+    return db.session.query(BenhNhan.HoTen). \
+        filter(BenhNhan.id.__eq__(patient_id)). \
+        filter(BenhNhan.DanhSachKham_id.__eq__(db.session.query(func.max(DanhSachKham.id)))).scalar()
 
 
 # def get_thuocId(name):

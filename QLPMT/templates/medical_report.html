@@ -45,17 +45,27 @@
                             <input class="form-check-input from-control" type="checkbox" onclick="checkBoxValue()" onblur="saveDataAfterRefresh()"
                                    id="notIncludedMed" name="notIncludedMed"
                                    {% if session['medical_report_save'] %}
-                                   {% if session['medical_report_save'].not_included_med == '1' %}
-                                   {{"checked"}} value = '1'
-                                   {% endif %}
-                                    {% else %} value = '0'
+                                        {% if session['medical_report_save'].not_included_med == '1' and session['medical_reports'] %}
+                                            {{"checked"}} {{'disabled'}} value = '1'
+                                        {% elif session['medical_report_save'].not_included_med == '1' %}
+                                            {{"checked"}} value = '1'
+                                        {% else %} value = '0'
+                                        {% endif %}
                                    {% endif %}
                             <label class="form-check-label"> Không kê khai thuốc</label>
                         </div>
 
-                         <input type="button" onclick="addMedToReport(patient_info)" value="Lưu" class="btn btn-outline-primary"/>
+                         <input type="button" id ="save_report"
+                                {%  if session['medical_reports']%}
+                                {{'disabled'}}
+                                {% endif %}
+                                onclick="addMedToReport(patient_info)" value="Lưu" class="btn btn-outline-primary"/>
                          <input type="button" onclick="showPatientMedicalReport()" value="Xem" class="btn btn-outline-primary "/>
-                         <input type="button" onclick="resetValueMedReport(patient_info)" id="clear_patient_content" value="Hủy" class="btn btn-outline-danger "/>
+                         <input type="button" id="clear_report"
+                                {%  if session['medical_reports']%}
+                                {{'disabled'}}
+                                {% endif %}
+                                onclick="resetValueMedReport(patient_info)" id="clear_patient_content" value="Hủy" class="btn btn-outline-danger "/>
 
                     </div>
 <!--    medical info-->
@@ -168,10 +178,10 @@
         </div>
 </div>
 <!--medical report content-->
-<div class="row m-10" style="margin-top: 50px">
+<div class="row mt-3" style="margin-top: 50px">
     <!-- current medical report-->
 
-    <div class="col-6 mt-3" id ="medical_report_content">
+    <div class="col mt-3" id ="medical_report_content">
     {% if session['medical_reports']%}
 
             <h4>BIỂU MẪU PHIẾU KHÁM BỆNH</h4>

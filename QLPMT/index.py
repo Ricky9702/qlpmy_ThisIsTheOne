@@ -1,3 +1,4 @@
+
 from flask import render_template, request, redirect, session, jsonify, url_for, make_response
 from QLPMT import app, dao, login
 from flask_login import login_user, logout_user, current_user
@@ -50,6 +51,7 @@ def medical_report():
     #     render_template('index.html')
     if request.method.__eq__('POST'):
         try:
+            dao.add_payment(payment_id=int(medical_reports.get('patient_id')))
             dao.add_medical_report(ngaykham=medical_reports.get('report_date'),
                                    mabenhnhan=int(medical_reports.get('patient_id')),
                                    trieuchung=medical_reports.get('symptoms'),
@@ -61,10 +63,9 @@ def medical_report():
                                               soluong=int(data.get('med_quantity')),
                                               cachdung=data.get('med_usage'))
                 dao.update_med_amount(med_name=data.get('med_name'), amount=data.get('med_quantity'))
-
             err_msg = "Lưu phiếu khám bệnh thành công!!!"
-            redirect('/medical-report')
-        except:
+        except Exception as ex:
+            print(ex)
             err_msg = 'Hệ thống đang có lỗi! Vui lòng quay lại sau!'
     return render_template('medical_report.html', med_info=med_info, med_type=med_type, med_name=med_name,
                            err_msg=err_msg)
@@ -77,12 +78,17 @@ def load_med_name_by_type():
     data = request.json
     med_type = data['med_type']
     temp = dao.load_med_name(med_type=med_type)
+    print(temp)
+    print("do dai: ", len(temp))
     result = []
-    for item in temp:
-        result.append({
-            'med_name': item.TenThuoc
-        })
-        med_name = result
+    if len(temp) != 0:
+        for item in temp:
+            result.append({
+                'med_name': item.TenThuoc
+            })
+            med_name = result
+    else:
+        med_name = {}
     session[key] = med_name
     print(len(med_name))
     res = make_response(jsonify(med_name), 200)
@@ -117,20 +123,25 @@ def load_save_medical_report():
 def load_medical_report():
     data = request.json
     patient_id = data['patient_id']
-    temp = dao.get_medical_date_of_patient(patient_id=patient_id)
-    result = []
-    added = set()
-    for item in temp:
-        if item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y") not in added:
-            result.append({
-                'med_date': item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y"),
-                'patient_name': item.BenhNhan.HoTen,
-                'patient_id': item.BenhNhan.id
-            })
-            added.add(item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y"))
-    print(result)
-    res = make_response(jsonify(result), 200)
-    return res
+    patient_name = dao.get_patient_name(patient_id)
+    print(patient_name)
+    if patient_name is None:
+        return jsonify({"error": "no patient found"})
+    else:
+        temp = dao.get_medical_date_of_patient(patient_id=patient_id)
+        result = []
+        added = set()
+        for item in temp:
+            if item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y") not in added:
+                result.append({
+                    'med_date': item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y"),
+                    'patient_name': item.BenhNhan.HoTen,
+                    'patient_id': item.BenhNhan.id
+                })
+                added.add(item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y"))
+        print(result)
+        res = make_response(jsonify(result), 200)
+        return res
 
 
 @app.route('/api/show-patient-med-report', methods=['post'])
@@ -138,6 +149,7 @@ def show_patient_medical_report_by_date():
     data = request.json
     patient_id = data['patient_id']
     med_date = data['med_date']
+    patient_name = dao.get_patient_name(patient_id)
     temp = dao.get_medical_date_of_patient(patient_id=patient_id)
     result = []
     for item in temp:
@@ -148,6 +160,7 @@ def show_patient_medical_report_by_date():
                     if dt.index(d) == 0:
                         result.append({
                             "medical_report": {
+                                "id": d.ChiTietPhieuKhamBenh.phieukhambenh.id,
                                 "med_date": d.ChiTietPhieuKhamBenh.phieukhambenh.NgayKham.strftime("%d/%m/%Y"),
                                 "symptoms": d.ChiTietPhieuKhamBenh.phieukhambenh.TrieuChung,
                                 "diagnose": d.ChiTietPhieuKhamBenh.phieukhambenh.DuDoanBenh,
@@ -174,6 +187,7 @@ def show_patient_medical_report_by_date():
             else:
                 result.append({
                     "medical_report": {
+                        "id": item.PhieuKhamBenh.id,
                         "med_date": item.PhieuKhamBenh.NgayKham.strftime("%d/%m/%Y"),
                         "symptoms": item.PhieuKhamBenh.TrieuChung,
                         "diagnose": item.PhieuKhamBenh.DuDoanBenh,
@@ -185,13 +199,12 @@ def show_patient_medical_report_by_date():
 
 @app.route('/api/clear-med-report')
 def clear_medical_report_session():
-    try:
-        del session['medical_reports']
-        del session['medical_report_save']
-        del session['medical_report_medicine']
-        return jsonify({'status': 204})
-    except:
-        return jsonify({'status': 404})
+    key = app.config['MEDICAL_REPORT_KEY']
+    if key in session:
+        del session[key]
+    session.pop('medical_reports', None)
+    session.pop('medical_report_medicine', None)
+    return jsonify({'status': 204})
 
 
 @app.route('/api/add-med-report', methods=['post'])
@@ -202,27 +215,50 @@ def add_med_to_report():
     medical_report_medicine = session[key2] if key2 in session else {}
     data = request.json
     patient_id = data['patient_id']
-    patient_name = dao.get_patient_name(patient_id)
     med_name = data['med_name']
     med_quantity = data['med_quantity']
+    not_included_med = data['not_included_med']
+    print(not_included_med)
+    patient_name = dao.get_patient_name(patient_id)
     med_unit = dao.get_med_unit(med_name)
-    if any(d['med_name'] == med_name for d in medical_report_medicine.values()):
-        dict_key = ','.join([str(item) for item in (key for key in medical_report_medicine if
-                                                    med_name in medical_report_medicine[key].values())])
-        result = int(medical_report_medicine[dict_key]["med_quantity"]) + med_quantity
-        medical_report_medicine[dict_key]["med_quantity"] = str(result)
+    if patient_name is None:
+        return jsonify({"error": 'no patient found'})
+    elif med_unit is None and not_included_med != '1':
+        return jsonify({"error": "no medicine found"})
     else:
-        id = str(len(medical_report_medicine) + 1)
-        print(medical_reports.values())
-        if patient_id not in medical_reports.values():
-            if med_unit is not None:
-                medical_reports = {
-                    "report_date": data['report_date'],
-                    "patient_id": patient_id,
-                    "patient_name": patient_name,
-                    "symptoms": data['symptoms'],
-                    "diagnose": data['diagnose'],
-                }
+        if any(d['med_name'] == med_name for d in medical_report_medicine.values()):
+            dict_key = ','.join([str(item) for item in (key for key in medical_report_medicine if med_name in medical_report_medicine[key].values())])
+            result = int(medical_report_medicine[dict_key]["med_quantity"]) + med_quantity
+            medical_report_medicine[dict_key]["med_quantity"] = str(result)
+        else:
+            id = str(len(medical_report_medicine) + 1)
+            print(medical_reports.values())
+            if patient_id not in medical_reports.values():
+                if med_unit is not None:
+                    medical_reports = {
+                        "report_date": data['report_date'],
+                        "patient_id": patient_id,
+                        "patient_name": patient_name,
+                        "symptoms": data['symptoms'],
+                        "diagnose": data['diagnose'],
+                    }
+                    medical_report_medicine[id] = {
+                        "id": id,
+                        "med_name": med_name,
+                        "med_type": data['med_type'],
+                        "med_unit": med_unit,
+                        "med_quantity": med_quantity,
+                        "med_usage": data['med_usage']
+                    }
+                else:
+                    medical_reports = {
+                        "report_date": data['report_date'],
+                        "patient_id": patient_id,
+                        "patient_name": patient_name,
+                        "symptoms": data['symptoms'],
+                        "diagnose": data['diagnose'],
+                    }
+            else:
                 medical_report_medicine[id] = {
                     "id": id,
                     "med_name": med_name,
@@ -231,26 +267,9 @@ def add_med_to_report():
                     "med_quantity": med_quantity,
                     "med_usage": data['med_usage']
                 }
-            else:
-                medical_reports = {
-                    "report_date": data['report_date'],
-                    "patient_id": patient_id,
-                    "patient_name": patient_name,
-                    "symptoms": data['symptoms'],
-                    "diagnose": data['diagnose'],
-                }
-        else:
-            medical_report_medicine[id] = {
-                "id": id,
-                "med_name": med_name,
-                "med_type": data['med_type'],
-                "med_unit": med_unit,
-                "med_quantity": med_quantity,
-                "med_usage": data['med_usage']
-            }
-    session[key] = medical_reports
-    session[key2] = medical_report_medicine
-    res = make_response(jsonify(medical_reports), 200)
+        session[key] = medical_reports
+        session[key2] = medical_report_medicine
+        res = make_response(jsonify(medical_reports), 200)
     return res
 
 
